@@ -22,12 +22,12 @@ def download_movie(pq):
     _print_msg('Downloading torrents for movie', title)
     try:
         download_torrents(torrents, title)
-    except urllib2.HTTPError:
+    except urllib2.URLError:
         _print_msg('Error downloading torrents! Site down?', title)
     _print_msg('Downloading subtitles for movie', title)
     try:
         download_subtitles(subtitles, title)
-    except urllib2.HTTPError:
+    except urllib2.URLError:
         _print_msg('Error downloading subtitles! Site down?', title)
 
 def download_show(pq, filter_by='HDTV'):
@@ -50,12 +50,12 @@ def download_show(pq, filter_by='HDTV'):
         _print_msg('Downloading torrents for', '%s - %s' % (title, episode_title))
         try:
             download_torrents(torrents, '%s - %s' % (title, episode_title))
-        except urllib2.HTTPError:
+        except urllib2.URLError:
             _print_msg('Error downloading torrents! Site down?', '%s - %s' % (title, episode_title))
         _print_msg('Getting subtitles for', '%s - %s' % (title, episode_title))
         try:
             download_subtitles(subtitles, '%s - %s' % (title, episode_title))
-        except urllib2.HTTPError:
+        except urllib2.URLError:
             _print_msg('Error downloading subtitles! Site down?', '%s - %s' % (title, episode_title))
 
 def get_torrents(links):
