@@ -20,15 +20,9 @@ def download_movie(pq):
     _print_msg('Getting subtitles for movie', title)
     subtitles = get_subtitles(links)
     _print_msg('Downloading torrents for movie', title)
-    try:
-        download_torrents(torrents, title)
-    except urllib2.URLError:
-        _print_msg('Error downloading torrents! Site down?', title)
+    download_torrents(torrents, title)
     _print_msg('Downloading subtitles for movie', title)
-    try:
-        download_subtitles(subtitles, title)
-    except urllib2.URLError:
-        _print_msg('Error downloading subtitles! Site down?', title)
+    download_subtitles(subtitles, title)
 
 def download_show(pq, filter_by='HDTV'):
     title = pq('span')[0].text
@@ -48,15 +42,9 @@ def download_show(pq, filter_by='HDTV'):
         _print_msg('Getting subtitles for', '%s - %s' % (title, episode_title))
         subtitles = get_subtitles(links)
         _print_msg('Downloading torrents for', '%s - %s' % (title, episode_title))
-        try:
-            download_torrents(torrents, '%s - %s' % (title, episode_title))
-        except urllib2.URLError:
-            _print_msg('Error downloading torrents! Site down?', '%s - %s' % (title, episode_title))
+        download_torrents(torrents, '%s - %s' % (title, episode_title))
         _print_msg('Getting subtitles for', '%s - %s' % (title, episode_title))
-        try:
-            download_subtitles(subtitles, '%s - %s' % (title, episode_title))
-        except urllib2.URLError:
-            _print_msg('Error downloading subtitles! Site down?', '%s - %s' % (title, episode_title))
+        download_subtitles(subtitles, '%s - %s' % (title, episode_title))
 
 def get_torrents(links):
     return [ link.values()[0] for link in links if 'torrent=1' in link.values()[0] ]
@@ -65,7 +53,11 @@ def download_torrents(torrents, filename_prefix=''):
     for torrent in torrents:
         url = 'http://www.mejorenvo.com' + torrent
         # print '%s - %s' % (filename_prefix, url)
-        handler = urllib2.urlopen(url)
+        try:
+            handler = urllib2.urlopen(url)
+        except urllib2.URLError:
+            print '[ERROR] Downloading torrent at %s, skipping...' % torrent
+            continue
         with open('%s.torrent' % filename_prefix, 'w') as fd:
             fd.write(handler.read())
 
@@ -82,7 +74,11 @@ def download_subtitles(subtitles, filename_prefix=''):
         'http://www.subswiki.com')
         if sub_anchor:
             sub_link = sub_anchor.attr('href')
-            handler = urllib2.urlopen(sub_link)
+            try:
+                handler = urllib2.urlopen(sub_link)
+            except urllib2.URLError:
+                print '[ERROR] Downloading subtitle at %s, skipping...' % sub_link
+                continue
             sub_ext = handler.headers['content-type'].split('/')[-1] if SOLOSUBTITULOS else\
             handler.headers['content type'].split('/')[-1]
             # print '%s - %s - %s' % (filename_prefix, sub_link, sub_ext)
