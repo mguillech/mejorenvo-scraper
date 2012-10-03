@@ -8,8 +8,11 @@ RE_MOVIES = r'%s/descargar-.+-pelicula-\d+.html' % BASE_URL
 RE_SHOWS = r'%s/descargar-.+-serie-\d+.html' % BASE_URL
 FILTER = 'HDTV'
 
-def _print_msg(message, extra_info):
-    print '%s "%s"' % (message, extra_info)
+def _print_msg(message, extra_info='', msg_type='INFO'):
+    msg = '[%s] %s' % (msg_type, message)
+    if extra_info:
+        msg += " '%s'" % extra_info
+    print msg
 
 def download_movie(pq):
     title = pq('a').children('span').text()
@@ -56,7 +59,7 @@ def download_torrents(torrents, filename_prefix=''):
         try:
             handler = urllib2.urlopen(url)
         except urllib2.URLError:
-            print '[ERROR] Downloading torrent at %s, skipping...' % torrent
+            _print_msg('Downloading torrent at %s failed, skipping...' % torrent, msg_type='ERROR')
             continue
         with open('%s.torrent' % filename_prefix, 'w') as fd:
             fd.write(handler.read())
@@ -68,6 +71,9 @@ def get_subtitles(links):
 def download_subtitles(subtitles, filename_prefix=''):
     for subtitle in subtitles:
         SOLOSUBTITULOS = 'solosubtitulos' in subtitle
+        if not SOLOSUBTITULOS:
+            _print_msg("Subtitles found on subswiki, you might want to check if the downloaded subs are correct",
+                msg_type='WARNING')
         pq = PyQuery(subtitle)
         sub_anchor = pq('.descargar_ficha') if SOLOSUBTITULOS else pq('a').filter(lambda i: this.text == 'descargar')
         sub_anchor = sub_anchor.make_links_absolute('http://www.solosubtitulos.com' if SOLOSUBTITULOS else\
@@ -77,7 +83,7 @@ def download_subtitles(subtitles, filename_prefix=''):
             try:
                 handler = urllib2.urlopen(sub_link)
             except urllib2.URLError:
-                print '[ERROR] Downloading subtitle at %s, skipping...' % sub_link
+                _print_msg('Downloading subtitle at %s failed, skipping...' % sub_link, msg_type='ERROR')
                 continue
             sub_ext = handler.headers['content-type'].split('/')[-1] if SOLOSUBTITULOS else\
             handler.headers['content type'].split('/')[-1]
