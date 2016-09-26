@@ -72,7 +72,7 @@ def _get_torrent_name(url):
         if '.torrent' in parsed_url.path:
             return parsed_url.path
         else:
-            # Torrent filename is a query parameter
+            # Torrent filename is inside a query parameter
             for query_string in chain.from_iterable(urllib.parse.parse_qs(url).values()):
                 if '.torrent' in query_string:
                     return query_string
