@@ -129,15 +129,24 @@ def _build_table_subtitle_dict(table):
     return table_dict
 
 
+def _tokenize_name(name):
+    return set([token.lower() for token in re.split('[.\-_/\s\[\]]', name) if token])
+
+
 def _get_subswiki_subtitle(torrent_name, subs_page):
+    """
+    Provided a torrent file name and a subtitles page in subswiki, attempt to guess the subtitle version which
+    matches the torrent file name.
+    """
     table_dict = {}
-    tokenized_torrent_name = set([token.lower() for token in re.split('[.\-_/\s\[\]]', torrent_name) if token])
+    tokenized_torrent_name = _tokenize_name(torrent_name)
+
     for table in subs_page.find('table[width="90%"]'):      # Tables with downloadable subtitles
         table_dict.update(_build_table_subtitle_dict(table))
 
     for sub_version, version_dict in table_dict.items():
-        tokenized_version = [token.lower() for token in re.split('[.\-_/\s\[\]]', sub_version) if token]
-        version_dict['best_guess_count'] = len(set(tokenized_version) & tokenized_torrent_name)
+        tokenized_version = _tokenize_name(sub_version)
+        version_dict['best_guess_count'] = len(tokenized_version & tokenized_torrent_name)
 
     best_guess = table_dict[max(table_dict.items(), key=lambda x: x[1]['best_guess_count'])[0]]
     return best_guess['download_link']
@@ -179,9 +188,10 @@ def download_subtitle(subtitle_url, episode_name='', torrent_name=''):
 
 def main(url):
     pq = PyQuery(url)
-    if re.match(RE_MOVIES, url):
+    # Identify the type of content we're trying to download
+    if re.match(RE_MOVIES, url):    # it's a movie
         download_movie(pq)
-    elif re.match(RE_SHOWS, url):
+    elif re.match(RE_SHOWS, url):   # it's a show
         download_show(pq)
     else:
         print('Invalid movie/show URL given')
