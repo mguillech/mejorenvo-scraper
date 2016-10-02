@@ -13,6 +13,11 @@ FILTER = 'HDTV'
 SUBSWIKI_TAG_LANGUAGE = set(['espaã±ol', 'espaã±a', 'español', 'españa'])
 SUBSWIKI_TAG_MOST_RECENT_SUB = 'más actualizado'
 SUBSWIKI_TAG_COMPLETED_SUB = 'completado'
+MAX_DOWNLOAD_RETRIES = 3
+
+
+class MaxRetriesExceeded(Exception):
+    pass
 
 
 def _print_msg(message, extra_info='', msg_type='INFO'):
@@ -79,25 +84,31 @@ def _get_torrent_name(url):
 
 
 def download_torrent(torrent, episode_name=''):
-    try:
-        r = requests.get(urllib.parse.urljoin(BASE_URL, torrent))
-    except requests.HTTPError:
-        _print_msg('Downloading torrent at {} failed, skipping...'.format(torrent), msg_type='ERROR')
-    else:
-        with open('{}.torrent'.format(episode_name), 'wb') as fd:
-            fd.write(r.content)
-
-        # Get torrent file name
-        torrent_name = ''
-        if r.history:
-            for history in r.history:
-                torrent_name = _get_torrent_name(history.url)
-                if torrent_name:
-                    break
+    for retry in range(MAX_DOWNLOAD_RETRIES):
+        try:
+            r = requests.get(urllib.parse.urljoin(BASE_URL, torrent))
+        except requests.HTTPError:
+            _print_msg('Downloading torrent at {} failed, skipping...'.format(torrent), msg_type='ERROR')
         else:
-            torrent_name = r.headers['Content-Disposition'].replace('"', '').replace('attachment; filename=', '')
+            # Check if it's a BitTorrent file
+            if 'Content-Type' in r.headers and r.headers['Content-Type'] == 'application/x-bittorrent':
+                with open('{}.torrent'.format(episode_name), 'wb') as fd:
+                    fd.write(r.content)
 
-        return torrent_name.replace('.torrent', '')
+                # Get torrent file name
+                torrent_name = ''
+                if r.history:
+                    for history in r.history:
+                        torrent_name = _get_torrent_name(history.url)
+                        if torrent_name:
+                            break
+                else:
+                    torrent_name = r.headers['Content-Disposition'].replace('"', '').replace('attachment; filename=',
+                                                                                             '')
+
+                return torrent_name.replace('.torrent', '')
+
+    raise MaxRetriesExceeded('Max retries exceeded for torrent file {}'.format(torrent))
 
 
 def get_subtitle(links):
@@ -153,15 +164,11 @@ def _get_subswiki_subtitle(torrent_name, subs_page):
 
 
 def download_subtitle(subtitle_url, episode_name='', torrent_name=''):
-    SOLOSUBTITULOS = 'solosubtitulos' in subtitle_url
     pq = PyQuery(subtitle_url)
-    if SOLOSUBTITULOS:
-        sub_anchor = pq('.descargar_ficha')
-    else:
-        # For subswiki we need to tokenize the torrent file name and try to 'guess' which subtitle file matches our
-        # torrent file
-        sub_anchor = _get_subswiki_subtitle(torrent_name, pq)
-    sub_anchor.make_links_absolute('http://www.solosubtitulos.com' if SOLOSUBTITULOS else 'http://www.subswiki.com')
+    # For subswiki we need to tokenize the torrent file name and try to 'guess' which subtitle file matches our
+    # torrent file
+    sub_anchor = _get_subswiki_subtitle(torrent_name, pq)
+    sub_anchor.make_links_absolute('http://www.subswiki.com')
 
     if sub_anchor is not None:
         sub_link = sub_anchor.attrib['href']
